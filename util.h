@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #define ARRAY_SIZE(a)                   ((sizeof(a) / sizeof(*(a))))
 #define SET_BYTE(x, y, which)           ((x) |= ((y) << (which * 8)))
 #define CLEAR_BYTE(x, type, which)      ((x) &= ~((type)0xff << (which * 8)))
@@ -10,6 +12,12 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+#define printBits(size, num) ({                 \
+    int num_bits = size * 8 - 1;                \
+    for(int bit = num_bits; bit >= 0; bit--) {  \
+        printf("%u",(num >>bit) & 1);           \
+    }                                           \
+})
 
 #define MOOG_E         2.71828182845904523536028747135266250
 #define MOOG_LOG2E     1.44269504088896340735992468100189214
@@ -30,15 +38,45 @@
 #define STRUCT_RES(name)    name##__res
 #define STRUCT_REQ(name)    name##__req
 
+#define STRUCT_RES_SIZE(name)    sizeof(name)
+#define STRUCT_REQ_SIZE(name)    sizeof(name)
+
 typedef union udata 
 {
     struct __attribute__((packed)) STRUCT_REQ(data)
     {
-       	/* some data */
+        /* Some Data */
     } req;
     
     struct __attribute__((packed)) STRUCT_RES(data)
     {
-        /* some data */
+    	/* Some Data */
     } res;
 } data;
+
+/*
+ * This macros initialize a pointer and return 
+ * if buffer size is les then required
+ */
+#define DEFINE_OR_RETURN(src, type, des, len)           \
+    type *des = (type *)src;                            \
+    if (sizeof(struct STRUCT_REQ(type)) < (len)) {      \
+        return;                                         \
+    }                                                   
+
+/*
+ * Used to separate incoming floating point to the bytes of data
+ * data.DDataIn
+ * data.FDataIn  
+ * data.LDDataIn
+ * data.dataOut[] 
+ */
+typedef union {
+	union {
+		double      DDataIn;
+		float   	FDataIn;
+        long double LDDataIn;
+	};
+	uint8_t  dataOut[sizeof(long double)];
+} ToFloatingPointTypes;
+
