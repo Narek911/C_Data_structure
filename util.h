@@ -1,6 +1,9 @@
 #include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdlib.h>
 
-#define ARRAY_SIZE(a)                   ((sizeof(a) / sizeof(*(a))))
+#define GET_ARRAY_LEN( arrayName )      (sizeof( arrayName ) / sizeof(( arrayName)[ 0 ] ))
 #define SET_BYTE(x, y, which)           ((x) |= ((y) << (which * 8)))
 #define CLEAR_BYTE(x, type, which)      ((x) &= ~((type)0xff << (which * 8)))
 #define GET_BYTE(n, k)                  (((n) >> (k * 8)) & 0xFF)
@@ -9,8 +12,74 @@
 #define BIT_FLIP(x,which)               ((x) ^=  (1<<(which)))
 #define BIT_CHECK(x,which)              ((x) &   (1<<(which)))
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#ifndef MIN
+#define MIN( n1, n2 )   ((n1) > (n2) ? (n2) : (n1))
+#endif
+
+#ifndef MAX
+#define MAX( n1, n2 )   ((n1) > (n2) ? (n1) : (n2))
+#endif
+
+/* Determine whether the given signed or unsigned integer is odd. */
+#define IS_ODD( num )   ((num) & 1)
+
+/* Determine whether the given signed or unsigned integer is even. */
+#define IS_EVEN( num )  (!IS_ODD( (num) ))
+
+/**
+Determine whether the given number is between the other two numbers
+(both inclusive).
+*/
+#define IS_BETWEEN( numToTest, numLow, numHigh ) \
+        ((unsigned char)((numToTest) >= (numLow) && (numToTest) <= (numHigh)))
+
+/* Aligns the supplied size to the specified PowerOfTwo */
+#define ALIGN_SIZE( sizeToAlign, PowerOfTwo )       \
+        (((sizeToAlign) + (PowerOfTwo) - 1) & ~((PowerOfTwo) - 1))
+
+/* Checks whether the supplied size is aligned to the specified PowerOfTwo */
+#define IS_SIZE_ALIGNED( sizeToTest, PowerOfTwo )  \
+        (((sizeToTest) & ((PowerOfTwo) - 1)) == 0)
+
+/* Obtain the offset of a field in a struct */
+#define GET_FIELD_OFFSET( StructName, FieldName ) \
+        ((short)(long)(&((StructName *)NULL)->FieldName))
+
+/* 
+* Obtain the struct element at the specified offset given the struct ptr 
+* typecast the pointer to get the value of the element
+*/
+#define GET_FIELD_PTR( pStruct, nOffset ) \
+        ((void *)(((char *)pStruct) + (nOffset)))
+
+/**
+Initializes the given structure to zeroes using memset().
+@param pStruct the pointer to structure that has to be initialized
+@see ALLOC_STRUCT
+*/
+#define INIT_STRUCT( pStruct ) (memset( pStruct, '\0', sizeof( *(pStruct) )))
+
+/**
+Use this macro for unused parameters right in the beginning of a function body
+to suppress compiler warnings about unused parameters.
+
+This is mainly meant for function parameters and not for unused local variables.
+*/
+#define UNUSED( ParamName ) \
+    ((void)(0 ? ((ParamName) = (ParamName)) : (ParamName)))
+
+/**
+ *Allocates a structure given the structure name and returns a pointer to
+that allocated structure.
+
+The main benefit is there is no need to cast the returned pointer, to the
+structure type.
+
+@param StructName the name of the structure
+@return pointer to allocated structure if successful, else NULL.
+@see INIT_STRUCT
+*/
+#define ALLOC_STRUCT( StructName ) ((StructName *)malloc( sizeof( StructName )))
 
 #define printBits(size, num) ({                 \
     int num_bits = size * 8 - 1;                \
@@ -80,3 +149,153 @@ typedef union {
 	uint8_t  dataOut[sizeof(long double)];
 } ToFloatingPointTypes;
 
+/**
+Determines whether the memory architecture of current processor is LittleEndian.
+
+Optimizing compiler should be able to reduce this macro to a boolean constant
+TRUE or FALSE.
+
+@return 1 if LittleEndian, else 0
+*/
+#define IS_LITTLE_ENDIAN()  (((*(short *)"21") & 0xFF) == '2')
+
+/**
+Determines whether the memory architecture of current processor is BigEndian.
+
+Optimizing compiler should be able to reduce this macro to a boolean constant
+TRUE or FALSE.
+
+@return 1 if BigEndian, else 0
+*/
+#define IS_BIG_ENDIAN()     (((*(short *)"21") & 0xFF) == '1')
+
+/**
+Change this macro to change the default endian format. In this example,
+the default endian format is Little Endian.
+
+Optimizing compiler should be able to reduce this macro to a boolean constant
+TRUE or FALSE.
+
+@return 1 if the curren endian format is the default format, else 0
+*/
+#define IS_DEFAULT_ENDIAN() IS_LITTLE_ENDIAN()
+
+/**
+Reverses the bytes of the supplied byte array.
+*/
+#define REVERSE_BYTE_ARRAY( ByteArray, Size )                               \
+        if (!IS_DEFAULT_ENDIAN())                                           \
+        {                                                                   \
+            int     _i, _j;                                                 \
+            char    _cTmp;                                                  \
+            for (_i = 0, _j = (Size) - 1; _i < _j; _i++, _j--)              \
+            {                                                               \
+                _cTmp = ((char *)(ByteArray))[ _i ];                        \
+                ((char *)(ByteArray))[ _i ] = ((char *)(ByteArray))[ _j ];  \
+                ((char *)(ByteArray))[ _j ] = _cTmp;                        \
+            }                                                               \
+        }
+
+/**
+If the current machine is not default endian, re-arranges the bytes of the
+given number. Does nothing if the current machine is default endian.
+
+Use this for number variable whose size is greater than 32 bits.
+
+For 16 and 32 bit numbers CONVERT_NUM16() and CONVERT_NUM32() are recommended.
+*/
+#define CONVERT_NUM( n )    REVERSE_BYTE_ARRAY( (&(n)), sizeof( n ))
+
+/**
+If the current machine is not default endian, re-arranges the bytes of the
+given 16-bit number. Does nothing if the current machine is default endian.
+*/
+#define CONVERT_NUM16( n )  ((void)(IS_DEFAULT_ENDIAN() ? (n)       \
+        : ((n) = ((((n) & 0x00FF) << 8) | (((n) & 0xFF00) >> 8)))))
+
+/**
+If the current machine is not default endian, re-arranges the bytes of the
+given 32-bit number. Does nothing if the current machine is default endian.
+*/
+#define CONVERT_NUM32( n )  ((void)(IS_DEFAULT_ENDIAN() ? (n)               \
+        : ((n) = ((((n) & 0x000000FF) << 24) | (((n) & 0x0000FF00) << 8)    \
+        | (((n) & 0xFF0000) >> 8) | (((n) & 0xFF000000) >> 24)))))
+
+/**
+If the current machine is not default endian, re-arranges the bytes of the
+given 32-bit floating point number. Does nothing if the current machine is
+default endian.
+*/
+#define CONVERT_FLOAT( f )  CONVERT_NUM32( (*(long *)&(f) ))
+
+/**
+If the current machine is not default endian, re-arranges the bytes of the
+given 64-bit floating point number. Does nothing if the current machine is
+default endian.
+*/
+#define CONVERT_DOUBLE( d ) CONVERT_NUM( d )
+
+/**
+If the current machine is not default endian, re-arranges the bytes of the
+given 64-bit point number. Does nothing if the current machine is
+default endian.
+*/
+#define CONVERT_NUM64( n )  CONVERT_NUM( n )
+
+/* It is used to get structure poiner using the members address of that data structure */
+#define container_of(ptr, type, member) ({                  \
+const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+    (type *)( (char *)__mptr - offsetof(type,member) ); })
+
+#define LSB(x) ((x) ^ ((x) - 1) & (x))   // least significant bit
+
+
+/*
+int
+main (int argc, char **argv)
+{
+  int (*max) (int, int) = 
+    lambda (int, (int x, int y) { return x > y ? x : y; });
+  return max (1, 2);
+}
+*/
+#define lambda(ret_type, ...)               \
+        __extension__                       \
+        ({                                  \
+                ret_type __fn__ __VA_ARGS__ \
+                __fn__;                     \
+        })
+
+/*
+int main() {
+    float a[] = { 1.1, 2.2, 3.3, 4.4, 54., 6.2, 7.5 };
+    for_each(float const* c, a) {
+        printf("sum = %f\n", *c);
+    }  
+}
+*/
+#define FOREACH(item, array)                        \
+    for(int keep=1, count=0,                        \
+            size=sizeof (array)/sizeof *(array);    \
+        keep && count != size;                      \
+        keep = !keep, count++)                      \
+        for(item = (array)+count; keep; keep = !keep)
+
+
+#define NEW(type, n) ( (type *) malloc(1 + (n) * sizeof(type)) )
+
+#define SEARCH(arr, size, target)           \
+  ({                                        \
+        __label__ found;                    \
+        int i = 0;                          \
+        int value = -1;                     \
+        for (i = 0; i < size; i++) {        \
+                if (arr[i] == target) {     \
+                        value = i;          \
+                        goto found;         \
+                }                           \
+        }                                   \
+        value = -1;                         \
+        found:                              \
+        value;                              \
+   })
