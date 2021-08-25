@@ -183,8 +183,8 @@ TRUE or FALSE.
 /**
 Reverses the bytes of the supplied byte array.
 */
-#define REVERSE_BYTE_ARRAY( ByteArray, Size )                               \
-        if (!IS_DEFAULT_ENDIAN())                                           \
+#define REVERSE_BYTE_ARRAY( ByteArray, Size, force )                        \
+        if (!IS_DEFAULT_ENDIAN() || force)                                  \
         {                                                                   \
             int     _i, _j;                                                 \
             char    _cTmp;                                                  \
