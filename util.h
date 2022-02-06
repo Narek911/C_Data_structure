@@ -12,6 +12,9 @@
 #define BIT_FLIP(x,which)               ((x) ^=  (1<<(which)))
 #define BIT_CHECK(x,which)              ((x) &   (1<<(which)))
 
+#define MEMCPY(DESTARR, SRCARR, ARRSIZE, ELLTYPE) \
+    { struct _tmparrwrap_ { ELLTYPE xx[ARRSIZE]; }; *((struct _tmparrwrap_ *) DESTARR) = *((struct _tmparrwrap_ *) SRCARR); }
+    
 #ifndef MIN
 #define MIN( n1, n2 )   ((n1) > (n2) ? (n2) : (n1))
 #endif
